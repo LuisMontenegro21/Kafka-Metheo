@@ -2,17 +2,29 @@ from kafka import KafkaConsumer
 import json
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from encoding import decode
 
 
-def kafka_consumer(topic: str, bootstrap_server: str) -> None:
-
-    consumer = KafkaConsumer(
-        topic,
-        bootstrap_servers=bootstrap_server,
-        group_id="lp-gc-group",
-        auto_offset_reset="earliest",
-        value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-    )
+def kafka_consumer(topic: str, bootstrap_server: str, mode: str="json") -> None:
+    consumer : KafkaConsumer
+    if mode == 'json':
+        consumer = KafkaConsumer(
+            topic,
+            bootstrap_servers=bootstrap_server,
+            group_id="lp-gc-group",
+            auto_offset_reset="earliest",
+            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+        )
+    elif mode == 'bytes':
+        consumer = KafkaConsumer(
+            topic,
+            bootstrap_servers=bootstrap_server,
+            group_id="lp-gc-group",
+            auto_offset_reset="earliest",
+            value_deserializer=lambda m: m,
+        )
+    else:
+        raise ValueError("mode has to be 'bytes' or 'json'")
     all_temp: list = []
     all_hum: list = []
     # all_wind: list = []
@@ -23,12 +35,23 @@ def kafka_consumer(topic: str, bootstrap_server: str) -> None:
 
     def update(frame):
         records = consumer.poll(timeout_ms=200)
-
+        if not records:
+            return
 
         for tp, batch in records.items():
             for msg in batch:
-                data = msg.value   
-
+                raw = msg.value   
+                if mode == 'json':
+                    data = raw
+                else: 
+                    if len(raw) != 3:
+                        print(f"Skipping payload with len={len(raw)}: {raw!r}")
+                        continue
+                    try:
+                        data = decode(raw)
+                    except ValueError as e:
+                        print(f"Decode error: {e} payload={raw!r}")
+                        continue
                 temp = data.get("temperatura")
                 hum = data.get("humedad")
 

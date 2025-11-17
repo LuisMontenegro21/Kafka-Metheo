@@ -1,23 +1,41 @@
 from kafka import KafkaProducer
 from sensor_simulator import generate_weather_data, rand
+from encoding import encode
 import json
 import time
 
 
 
-def kafka_producer(topic: str, bootstrap_server: str) -> None:
-    producer = KafkaProducer(
-        bootstrap_servers=bootstrap_server,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8")
-    )
+def kafka_producer(topic: str, bootstrap_server: str, mode:str = 'json') -> None:
+    producer: KafkaProducer
+    if mode == 'json':
+        producer = KafkaProducer(
+            bootstrap_servers=bootstrap_server,
+            value_serializer=lambda v: json.dumps(v).encode("utf-8")
+        )
+    elif mode == 'bytes':
+        producer = KafkaProducer(
+            bootstrap_servers=bootstrap_server,
+        )
+    else:
+        raise ValueError("Invalid mode. Must be 'json' or 'bytes'.")
     print(f"Sending data with topic {topic} in {bootstrap_server}")
     try:
-        while True:
-            data: dict = generate_weather_data()
-            producer.send(topic, data) 
-            print(f"Topic: {topic} Data: {data} sent")
-            wait = rand.uniform(15, 30) # generate a wait between 15 and 30 secs
-            time.sleep(wait)
+        if mode == 'json':
+            while True:
+                data: dict = generate_weather_data()
+                producer.send(topic, data) 
+                print(f"Topic: {topic} Data: {data} sent")
+                wait = rand.uniform(15, 30) # generate a wait between 15 and 30 secs
+                time.sleep(wait)
+        elif mode == 'bytes':
+            while True:
+                data: dict = generate_weather_data()
+                payload = encode(data)
+                producer.send(topic, payload) 
+                print(f"Topic: {topic} Bytes: {payload} sent")
+                wait = rand.uniform(15, 30) # generate a wait between 15 and 30 secs
+                time.sleep(wait)
 
     except KeyboardInterrupt:
         print("Producer stopped by user")
