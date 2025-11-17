@@ -4,20 +4,18 @@ import json
 import time
 
 
-BOOTSTRAP_SERVER = "lab9.alumchat.lol:9092"
-TOPIC = "21699"
 
-def kafka_producer() -> None:
+def kafka_producer(topic: str, bootstrap_server: str) -> None:
     producer = KafkaProducer(
-        bootstrap_servers=BOOTSTRAP_SERVER,
+        bootstrap_servers=bootstrap_server,
         value_serializer=lambda v: json.dumps(v).encode("utf-8")
     )
-    print(f"Sending data with topic {TOPIC} in {BOOTSTRAP_SERVER}")
+    print(f"Sending data with topic {topic} in {bootstrap_server}")
     try:
         while True:
             data: dict = generate_weather_data()
-            producer.send(TOPIC, data) 
-            print(f"Topic: {TOPIC} Data: {data} sent")
+            producer.send(topic, data) 
+            print(f"Topic: {topic} Data: {data} sent")
             wait = rand.uniform(15, 30) # generate a wait between 15 and 30 secs
             time.sleep(wait)
 
